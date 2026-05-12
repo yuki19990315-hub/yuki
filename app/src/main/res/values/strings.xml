@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Yuki Glyph Toy</string>
+    <string name="toy_name_clock">Yuki Clock</string>
+    <string name="toy_summary_clock">Phone (4a) Pro の Glyph Matrix に時刻とハートを表示する AOD Toy</string>
+    <string name="widget_name_matrix">Yuki Matrix</string>
+    <string name="widget_description_matrix">取り込んだ13×13白黒画像をホーム画面にも表示します</string>
+</resources>
