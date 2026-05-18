@@ -25,26 +25,68 @@ final class GlyphDisplayPolicy {
         return hour >= start || hour < end;
     }
 
+    static void restartDisplaySession(Context context) {
+        MatrixStorage.clearDisplaySession(context);
+        ensureDisplaySession(context, SystemClock.elapsedRealtime());
+    }
+
     static boolean isDisplayDurationExpired(Context context) {
         int minutes = MatrixStorage.loadDisplayDurationMinutes(context);
         if (minutes <= 0) {
+            MatrixStorage.clearDisplaySession(context);
             return false;
         }
-        long startedAt = MatrixStorage.loadDisplaySessionStartedAt(context);
-        if (startedAt == 0L) {
-            MatrixStorage.saveDisplaySessionStartedAt(context, SystemClock.elapsedRealtime());
-            return false;
+
+        long now = SystemClock.elapsedRealtime();
+        long deadlineAt = ensureDisplaySession(context, now);
+        return now >= deadlineAt;
+    }
+
+    static long millisUntilDisplayDeadline(Context context) {
+        int minutes = MatrixStorage.loadDisplayDurationMinutes(context);
+        if (minutes <= 0) {
+            return Long.MAX_VALUE;
         }
-        long elapsed = SystemClock.elapsedRealtime() - startedAt;
-        return elapsed >= minutes * 60_000L;
+        long now = SystemClock.elapsedRealtime();
+        long deadlineAt = ensureDisplaySession(context, now);
+        return Math.max(0L, deadlineAt - now);
     }
 
     static String describe(Context context) {
         int duration = MatrixStorage.loadDisplayDurationMinutes(context);
-        String durationText = duration <= 0 ? "常時表示" : "スリープ後約" + duration + "分";
+        String durationText = duration <= 0 ? "スリープ後も常時表示" : "スリープ開始から" + duration + "分で消灯";
         int start = MatrixStorage.loadQuietStartHour(context);
         int end = MatrixStorage.loadQuietEndHour(context);
         String quietText = start == end ? "夜間消灯なし" : String.format("%02d:00〜%02d:00は消灯", start, end);
-        return durationText + " / " + quietText;
+        String remainingText = remainingDisplayText(context, duration);
+        return durationText + remainingText + " / " + quietText;
+    }
+
+    private static long ensureDisplaySession(Context context, long now) {
+        long startedAt = MatrixStorage.loadDisplaySessionStartedAt(context);
+        long deadlineAt = MatrixStorage.loadDisplaySessionDeadlineAt(context);
+        if (startedAt <= 0L || deadlineAt <= startedAt) {
+            startedAt = now;
+            deadlineAt = now + MatrixStorage.loadDisplayDurationMinutes(context) * 60_000L;
+            MatrixStorage.saveDisplaySession(context, startedAt, deadlineAt);
+        }
+        return deadlineAt;
+    }
+
+    private static String remainingDisplayText(Context context, int duration) {
+        if (duration <= 0) {
+            return "";
+        }
+        long startedAt = MatrixStorage.loadDisplaySessionStartedAt(context);
+        long deadlineAt = MatrixStorage.loadDisplaySessionDeadlineAt(context);
+        if (startedAt <= 0L || deadlineAt <= startedAt) {
+            return "";
+        }
+        long remainingMillis = deadlineAt - SystemClock.elapsedRealtime();
+        if (remainingMillis <= 0L) {
+            return "（残り0分）";
+        }
+        long remainingMinutes = Math.max(1L, (remainingMillis + 59_999L) / 60_000L);
+        return "（残り約" + remainingMinutes + "分）";
     }
 }
