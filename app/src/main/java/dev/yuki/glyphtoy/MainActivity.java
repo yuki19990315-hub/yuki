@@ -21,7 +21,6 @@ import java.io.InputStream;
 public final class MainActivity extends Activity {
     private static final int REQUEST_PICK_IMAGE = 42;
     private static final int MAX_GIF_FRAMES = 24;
-    private static final int[] DISPLAY_DURATION_OPTIONS = {1, 5, 10, 15, 30, 60, 120, 0};
 
     private GlyphMatrixBridge bridge;
     private TextView status;
@@ -126,7 +125,7 @@ public final class MainActivity extends Activity {
         });
 
         TextView policyTitle = new TextView(this);
-        policyTitle.setText("背面ディスプレイのスリープ設定");
+        policyTitle.setText("背面ディスプレイの表示設定");
         policyTitle.setTextSize(18);
         policyTitle.setPadding(0, padding, 0, padding / 4);
         root.addView(policyTitle, new LinearLayout.LayoutParams(-1, -2));
@@ -136,11 +135,6 @@ public final class MainActivity extends Activity {
         root.addView(powerPolicy, new LinearLayout.LayoutParams(-1, -2));
         refreshPowerPolicyText();
 
-        addButton(root, "スリープ時間を短く", view -> changeDisplayDuration(-1));
-        addButton(root, "スリープ時間を長く", view -> changeDisplayDuration(1));
-        addButton(root, "今からスリープ時間を数え直す", view -> restartDisplayTimer());
-        addButton(root, "夜間消灯の開始を+1時間", view -> shiftQuietStart());
-        addButton(root, "夜間消灯の終了を+1時間", view -> shiftQuietEnd());
         addButton(root, "Glyph Toys 管理画面を開く", view -> openGlyphToyManager());
 
         refreshGifEditor();
@@ -315,61 +309,6 @@ public final class MainActivity extends Activity {
             return 0;
         }
         return Math.max(0, Math.min(index, length - 1));
-    }
-
-    private void changeDisplayDuration(int direction) {
-        int current = MatrixStorage.loadDisplayDurationMinutes(this);
-        int optionIndex = displayDurationOptionIndex(current);
-        int nextIndex = Math.max(0, Math.min(DISPLAY_DURATION_OPTIONS.length - 1, optionIndex + direction));
-        int next = DISPLAY_DURATION_OPTIONS[nextIndex];
-        MatrixStorage.saveDisplayDurationMinutes(this, next);
-        refreshPowerPolicyText();
-        Toast.makeText(this, "スリープ時間を" + displayDurationLabel(next) + "にしました", Toast.LENGTH_SHORT).show();
-    }
-
-    private int displayDurationOptionIndex(int current) {
-        for (int i = 0; i < DISPLAY_DURATION_OPTIONS.length; i++) {
-            if (DISPLAY_DURATION_OPTIONS[i] == current) {
-                return i;
-            }
-        }
-        if (current <= 1) {
-            return 0;
-        }
-        for (int i = 1; i < DISPLAY_DURATION_OPTIONS.length - 1; i++) {
-            if (current <= DISPLAY_DURATION_OPTIONS[i]) {
-                return i;
-            }
-        }
-        return DISPLAY_DURATION_OPTIONS.length - 2;
-    }
-
-    private void restartDisplayTimer() {
-        GlyphDisplayPolicy.restartDisplaySession(this);
-        refreshPowerPolicyText();
-        Toast.makeText(this, "今から設定時間を数え直します", Toast.LENGTH_SHORT).show();
-    }
-
-    private String displayDurationLabel(int minutes) {
-        return minutes <= 0 ? "常時表示" : minutes + "分";
-    }
-
-    private void shiftQuietStart() {
-        MatrixStorage.saveQuietHours(
-                this,
-                MatrixStorage.loadQuietStartHour(this) + 1,
-                MatrixStorage.loadQuietEndHour(this)
-        );
-        refreshPowerPolicyText();
-    }
-
-    private void shiftQuietEnd() {
-        MatrixStorage.saveQuietHours(
-                this,
-                MatrixStorage.loadQuietStartHour(this),
-                MatrixStorage.loadQuietEndHour(this) + 1
-        );
-        refreshPowerPolicyText();
     }
 
     private void refreshPowerPolicyText() {
