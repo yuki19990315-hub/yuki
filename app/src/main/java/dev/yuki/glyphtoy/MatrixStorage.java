@@ -13,10 +13,11 @@ final class MatrixStorage {
     private static final String KEY_SELECTED_GIF_FRAME_INDEX = "selected_gif_frame_index";
     private static final String KEY_DISPLAY_DURATION_MINUTES = "display_duration_minutes";
     private static final String KEY_DISPLAY_SESSION_STARTED_AT = "display_session_started_at";
+    private static final String KEY_DISPLAY_SESSION_DEADLINE_AT = "display_session_deadline_at";
     private static final String KEY_QUIET_START_HOUR = "quiet_start_hour";
     private static final String KEY_QUIET_END_HOUR = "quiet_end_hour";
     private static final int SIZE = PixelMatrix.PHONE_4A_PRO_SIZE * PixelMatrix.PHONE_4A_PRO_SIZE;
-    private static final int DEFAULT_DISPLAY_DURATION_MINUTES = 1;
+    private static final int DEFAULT_DISPLAY_DURATION_MINUTES = 15;
     private static final int DEFAULT_QUIET_START_HOUR = 23;
     private static final int DEFAULT_QUIET_END_HOUR = 7;
 
@@ -77,6 +78,7 @@ final class MatrixStorage {
         prefs(context).edit()
                 .putInt(KEY_DISPLAY_DURATION_MINUTES, minutes)
                 .remove(KEY_DISPLAY_SESSION_STARTED_AT)
+                .remove(KEY_DISPLAY_SESSION_DEADLINE_AT)
                 .apply();
     }
 
@@ -84,12 +86,22 @@ final class MatrixStorage {
         return prefs(context).getLong(KEY_DISPLAY_SESSION_STARTED_AT, 0L);
     }
 
-    static void saveDisplaySessionStartedAt(Context context, long elapsedRealtime) {
-        prefs(context).edit().putLong(KEY_DISPLAY_SESSION_STARTED_AT, elapsedRealtime).apply();
+    static long loadDisplaySessionDeadlineAt(Context context) {
+        return prefs(context).getLong(KEY_DISPLAY_SESSION_DEADLINE_AT, 0L);
+    }
+
+    static void saveDisplaySession(Context context, long startedAt, long deadlineAt) {
+        prefs(context).edit()
+                .putLong(KEY_DISPLAY_SESSION_STARTED_AT, startedAt)
+                .putLong(KEY_DISPLAY_SESSION_DEADLINE_AT, deadlineAt)
+                .apply();
     }
 
     static void clearDisplaySession(Context context) {
-        prefs(context).edit().remove(KEY_DISPLAY_SESSION_STARTED_AT).apply();
+        prefs(context).edit()
+                .remove(KEY_DISPLAY_SESSION_STARTED_AT)
+                .remove(KEY_DISPLAY_SESSION_DEADLINE_AT)
+                .apply();
     }
 
     static int loadQuietStartHour(Context context) {
