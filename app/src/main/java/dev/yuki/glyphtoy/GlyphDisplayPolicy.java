@@ -54,7 +54,7 @@ final class GlyphDisplayPolicy {
 
     static String describe(Context context) {
         int duration = MatrixStorage.loadDisplayDurationMinutes(context);
-        String durationText = duration <= 0 ? "スリープ後も常時表示" : "スリープ開始から" + duration + "分で消灯";
+        String durationText = duration <= 0 ? "スリープ時間なし（常時表示）" : "スリープ開始から" + duration + "分で消灯";
         int start = MatrixStorage.loadQuietStartHour(context);
         int end = MatrixStorage.loadQuietEndHour(context);
         String quietText = start == end ? "夜間消灯なし" : String.format("%02d:00〜%02d:00は消灯", start, end);
