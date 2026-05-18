@@ -45,9 +45,10 @@ public final class YukiClockToyService extends Service {
     @Override
     public boolean onUnbind(Intent intent) {
         serviceHandler.removeCallbacks(turnOffCheck);
-        MatrixStorage.clearDisplaySession(this);
         if (bridge != null) {
-            bridge.turnOff();
+            if (shouldTurnOffOnUnbind()) {
+                bridge.turnOff();
+            }
             bridge.unInit();
             bridge = null;
         }
@@ -86,6 +87,7 @@ public final class YukiClockToyService extends Service {
     private void handleToyEvent(Bundle bundle) {
         String event = bundle.getString(MSG_GLYPH_TOY_DATA, bundle.getString("event", ""));
         if (EVENT_AOD.equals(event)) {
+            GlyphDisplayPolicy.restartDisplaySession(this);
             render();
         } else if (EVENT_CHANGE.equals(event)) {
             heartMode = !heartMode;
@@ -115,13 +117,23 @@ public final class YukiClockToyService extends Service {
 
     private void scheduleTurnOffCheck() {
         serviceHandler.removeCallbacks(turnOffCheck);
-        int minutes = MatrixStorage.loadDisplayDurationMinutes(this);
-        long startedAt = MatrixStorage.loadDisplaySessionStartedAt(this);
-        if (minutes <= 0 || startedAt == 0L) {
+        long delay = GlyphDisplayPolicy.millisUntilDisplayDeadline(this);
+        if (delay == Long.MAX_VALUE) {
             return;
         }
-        long deadline = startedAt + minutes * 60_000L;
-        long delay = Math.max(1_000L, deadline - SystemClock.elapsedRealtime());
-        serviceHandler.postDelayed(turnOffCheck, delay);
+        if (delay <= 0L) {
+            render();
+            return;
+        }
+        serviceHandler.postDelayed(turnOffCheck, Math.max(1_000L, delay));
+    }
+
+    private boolean shouldTurnOffOnUnbind() {
+        if (GlyphDisplayPolicy.isQuietHour(this, LocalTime.now())) {
+            return true;
+        }
+        int minutes = MatrixStorage.loadDisplayDurationMinutes(this);
+        long deadlineAt = MatrixStorage.loadDisplaySessionDeadlineAt(this);
+        return minutes > 0 && deadlineAt > 0L && SystemClock.elapsedRealtime() >= deadlineAt;
     }
 }
