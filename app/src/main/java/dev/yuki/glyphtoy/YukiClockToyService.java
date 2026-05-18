@@ -19,6 +19,7 @@ public final class YukiClockToyService extends Service {
     private static final String MSG_GLYPH_TOY_DATA = "data";
     private static final String EVENT_AOD = "aod";
     private static final String EVENT_CHANGE = "change";
+    private static final long MAX_SLEEP_TIMER_RECHECK_MS = 60_000L;
 
     private GlyphMatrixBridge bridge;
     private boolean heartMode;
@@ -125,7 +126,8 @@ public final class YukiClockToyService extends Service {
             render();
             return;
         }
-        serviceHandler.postDelayed(turnOffCheck, Math.max(1_000L, delay));
+        long recheckDelay = Math.min(Math.max(1_000L, delay), MAX_SLEEP_TIMER_RECHECK_MS);
+        serviceHandler.postDelayed(turnOffCheck, recheckDelay);
     }
 
     private boolean shouldTurnOffOnUnbind() {
