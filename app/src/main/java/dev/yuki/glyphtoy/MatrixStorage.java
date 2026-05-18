@@ -17,11 +17,11 @@ final class MatrixStorage {
     private static final String KEY_DISPLAY_SESSION_DEADLINE_AT = "display_session_deadline_at";
     private static final String KEY_QUIET_START_HOUR = "quiet_start_hour";
     private static final String KEY_QUIET_END_HOUR = "quiet_end_hour";
+    private static final String KEY_QUIET_HOURS_MIGRATED = "quiet_hours_migrated";
     private static final int SIZE = PixelMatrix.PHONE_4A_PRO_SIZE * PixelMatrix.PHONE_4A_PRO_SIZE;
-    private static final int LEGACY_DEFAULT_DISPLAY_DURATION_MINUTES = 1;
-    private static final int DEFAULT_DISPLAY_DURATION_MINUTES = 15;
-    private static final int DEFAULT_QUIET_START_HOUR = 23;
-    private static final int DEFAULT_QUIET_END_HOUR = 7;
+    private static final int DEFAULT_DISPLAY_DURATION_MINUTES = 0;
+    private static final int DEFAULT_QUIET_START_HOUR = 0;
+    private static final int DEFAULT_QUIET_END_HOUR = 0;
 
     private MatrixStorage() {}
 
@@ -74,23 +74,16 @@ final class MatrixStorage {
 
     static int loadDisplayDurationMinutes(Context context) {
         SharedPreferences preferences = prefs(context);
-        if (!preferences.contains(KEY_DISPLAY_DURATION_MINUTES)) {
-            return DEFAULT_DISPLAY_DURATION_MINUTES;
-        }
-
-        int minutes = preferences.getInt(KEY_DISPLAY_DURATION_MINUTES, DEFAULT_DISPLAY_DURATION_MINUTES);
         if (!preferences.getBoolean(KEY_DISPLAY_DURATION_MIGRATED, false)) {
-            if (minutes == LEGACY_DEFAULT_DISPLAY_DURATION_MINUTES) {
-                minutes = DEFAULT_DISPLAY_DURATION_MINUTES;
-            }
             preferences.edit()
-                    .putInt(KEY_DISPLAY_DURATION_MINUTES, minutes)
+                    .putInt(KEY_DISPLAY_DURATION_MINUTES, DEFAULT_DISPLAY_DURATION_MINUTES)
                     .putBoolean(KEY_DISPLAY_DURATION_MIGRATED, true)
                     .remove(KEY_DISPLAY_SESSION_STARTED_AT)
                     .remove(KEY_DISPLAY_SESSION_DEADLINE_AT)
                     .apply();
+            return DEFAULT_DISPLAY_DURATION_MINUTES;
         }
-        return minutes;
+        return preferences.getInt(KEY_DISPLAY_DURATION_MINUTES, DEFAULT_DISPLAY_DURATION_MINUTES);
     }
 
     static void saveDisplayDurationMinutes(Context context, int minutes) {
@@ -125,10 +118,12 @@ final class MatrixStorage {
     }
 
     static int loadQuietStartHour(Context context) {
+        migrateQuietHoursIfNeeded(context);
         return prefs(context).getInt(KEY_QUIET_START_HOUR, DEFAULT_QUIET_START_HOUR);
     }
 
     static int loadQuietEndHour(Context context) {
+        migrateQuietHoursIfNeeded(context);
         return prefs(context).getInt(KEY_QUIET_END_HOUR, DEFAULT_QUIET_END_HOUR);
     }
 
@@ -136,6 +131,19 @@ final class MatrixStorage {
         prefs(context).edit()
                 .putInt(KEY_QUIET_START_HOUR, normalizeHour(startHour))
                 .putInt(KEY_QUIET_END_HOUR, normalizeHour(endHour))
+                .putBoolean(KEY_QUIET_HOURS_MIGRATED, true)
+                .apply();
+    }
+
+    private static void migrateQuietHoursIfNeeded(Context context) {
+        SharedPreferences preferences = prefs(context);
+        if (preferences.getBoolean(KEY_QUIET_HOURS_MIGRATED, false)) {
+            return;
+        }
+        preferences.edit()
+                .putInt(KEY_QUIET_START_HOUR, DEFAULT_QUIET_START_HOUR)
+                .putInt(KEY_QUIET_END_HOUR, DEFAULT_QUIET_END_HOUR)
+                .putBoolean(KEY_QUIET_HOURS_MIGRATED, true)
                 .apply();
     }
 
