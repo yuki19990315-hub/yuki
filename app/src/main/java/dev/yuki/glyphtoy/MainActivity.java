@@ -17,6 +17,7 @@ import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalTime;
 
 public final class MainActivity extends Activity {
     private static final int REQUEST_PICK_IMAGE = 42;
@@ -25,6 +26,7 @@ public final class MainActivity extends Activity {
     private GlyphMatrixBridge bridge;
     private TextView status;
     private TextView powerPolicy;
+    private TextView displayModeStatus;
     private TextView gifFrameStatus;
     private Button onionSkinButton;
     private MatrixPreviewView previewView;
@@ -119,10 +121,22 @@ public final class MainActivity extends Activity {
 
         addButton(root, "現在のコマに画像を読み込む", view -> pickImage());
 
-        addButton(root, "選択中のコマを背面に表示", view -> {
-            bridge.setAppFrame(selectedImageFrame);
-            Toast.makeText(this, "選択中の13×13コマをGlyph Matrixに送信しました", Toast.LENGTH_SHORT).show();
-        });
+        addButton(root, "選択中のコマを背面に固定", view -> setDisplayMode(GlyphDisplayMode.CUSTOM));
+
+        TextView modeTitle = new TextView(this);
+        modeTitle.setText("AOD表示モード");
+        modeTitle.setTextSize(18);
+        modeTitle.setPadding(0, padding, 0, padding / 4);
+        root.addView(modeTitle, new LinearLayout.LayoutParams(-1, -2));
+
+        displayModeStatus = new TextView(this);
+        displayModeStatus.setTextSize(14);
+        displayModeStatus.setPadding(0, 0, 0, padding / 4);
+        root.addView(displayModeStatus, new LinearLayout.LayoutParams(-1, -2));
+
+        addButton(root, "選択中のコマを維持", view -> setDisplayMode(GlyphDisplayMode.CUSTOM));
+        addButton(root, "時計モードを維持", view -> setDisplayMode(GlyphDisplayMode.CLOCK));
+        addButton(root, "ハートモードを維持", view -> setDisplayMode(GlyphDisplayMode.HEART));
 
         TextView policyTitle = new TextView(this);
         policyTitle.setText("背面ディスプレイの表示設定");
@@ -138,6 +152,7 @@ public final class MainActivity extends Activity {
         addButton(root, "Glyph Toys 管理画面を開く", view -> openGlyphToyManager());
 
         refreshGifEditor();
+        refreshDisplayModeText();
         return scrollView;
     }
 
@@ -192,7 +207,10 @@ public final class MainActivity extends Activity {
                 return;
             }
             replaceSelectedGifFrame(ImageMatrixConverter.fromBitmap(bitmap));
+            MatrixStorage.saveDisplayMode(this, GlyphDisplayMode.CUSTOM);
             bridge.setAppFrame(selectedImageFrame);
+            refreshDisplayModeText();
+            refreshPowerPolicyText();
             Toast.makeText(this, "現在のGIFコマを13×13の白黒表示に変換しました", Toast.LENGTH_SHORT).show();
         } catch (IOException exception) {
             Toast.makeText(this, "画像の読み込み中にエラーが発生しました", Toast.LENGTH_LONG).show();
@@ -205,6 +223,8 @@ public final class MainActivity extends Activity {
         selectedGifFrameIndex = ((index % length) + length) % length;
         selectedImageFrame = gifFrames[selectedGifFrameIndex].clone();
         MatrixStorage.saveSelectedGifFrameIndex(this, selectedGifFrameIndex);
+        MatrixStorage.saveCustomFrame(this, selectedImageFrame);
+        MatrixWidgetProvider.updateAll(this);
         refreshGifEditor();
     }
 
@@ -266,6 +286,29 @@ public final class MainActivity extends Activity {
         refreshGifEditor();
     }
 
+    private void setDisplayMode(GlyphDisplayMode mode) {
+        if (mode == GlyphDisplayMode.CUSTOM) {
+            MatrixStorage.saveCustomFrame(this, selectedImageFrame);
+            MatrixWidgetProvider.updateAll(this);
+        }
+        MatrixStorage.saveDisplayMode(this, mode);
+        bridge.setAppFrame(frameForDisplayMode(mode));
+        refreshDisplayModeText();
+        refreshPowerPolicyText();
+        Toast.makeText(this, mode.label() + "を維持します", Toast.LENGTH_SHORT).show();
+    }
+
+    private int[] frameForDisplayMode(GlyphDisplayMode mode) {
+        if (mode == GlyphDisplayMode.HEART) {
+            return PixelMatrix.heart();
+        }
+        if (mode == GlyphDisplayMode.CLOCK) {
+            return PixelMatrix.clock(LocalTime.now());
+        }
+        int[] customFrame = MatrixStorage.loadCustomFrame(this);
+        return customFrame == null ? selectedImageFrame : customFrame;
+    }
+
     private void refreshGifEditor() {
         ensureGifFrames();
         selectedImageFrame = gifFrames[selectedGifFrameIndex].clone();
@@ -278,6 +321,12 @@ public final class MainActivity extends Activity {
         }
         if (onionSkinButton != null) {
             onionSkinButton.setText("前コマ下敷き: " + (showOnionSkin ? "ON" : "OFF"));
+        }
+    }
+
+    private void refreshDisplayModeText() {
+        if (displayModeStatus != null) {
+            displayModeStatus.setText("選択中: " + MatrixStorage.loadDisplayMode(this).label() + "（手動で変えるまで維持）");
         }
     }
 
