@@ -8,7 +8,6 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
-import android.os.SystemClock;
 import android.util.Log;
 
 import java.time.LocalTime;
@@ -19,11 +18,10 @@ public final class YukiClockToyService extends Service {
     private static final String MSG_GLYPH_TOY_DATA = "data";
     private static final String EVENT_AOD = "aod";
     private static final String EVENT_CHANGE = "change";
-    private static final long MAX_SLEEP_TIMER_RECHECK_MS = 60_000L;
+    private static final long CLOCK_REFRESH_MS = 1_000L;
 
     private GlyphMatrixBridge bridge;
-    private boolean heartMode;
-    private final Runnable turnOffCheck = this::render;
+    private final Runnable renderTick = this::render;
 
     private final Handler serviceHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -45,11 +43,8 @@ public final class YukiClockToyService extends Service {
 
     @Override
     public boolean onUnbind(Intent intent) {
-        serviceHandler.removeCallbacks(turnOffCheck);
+        serviceHandler.removeCallbacks(renderTick);
         if (bridge != null) {
-            if (shouldTurnOffOnUnbind()) {
-                bridge.turnOff();
-            }
             bridge.unInit();
             bridge = null;
         }
@@ -86,56 +81,49 @@ public final class YukiClockToyService extends Service {
     }
 
     private void handleToyEvent(Bundle bundle) {
-        String event = bundle.getString(MSG_GLYPH_TOY_DATA, bundle.getString("event", ""));
+        String event = bundle == null ? "" : bundle.getString(MSG_GLYPH_TOY_DATA, bundle.getString("event", ""));
         if (EVENT_AOD.equals(event)) {
             GlyphDisplayPolicy.restartDisplaySession(this);
             render();
         } else if (EVENT_CHANGE.equals(event)) {
-            heartMode = !heartMode;
+            cycleDisplayMode();
+        } else {
             render();
         }
+    }
+
+    private void cycleDisplayMode() {
+        GlyphDisplayMode nextMode = MatrixStorage.loadDisplayMode(this).next();
+        MatrixStorage.saveDisplayMode(this, nextMode);
+        render();
     }
 
     private void render() {
         if (bridge == null) {
             return;
         }
-        if (GlyphDisplayPolicy.shouldTurnOff(this, LocalTime.now())) {
-            bridge.turnOff();
-            return;
-        }
+        GlyphDisplayPolicy.shouldTurnOff(this, LocalTime.now());
 
+        GlyphDisplayMode mode = MatrixStorage.loadDisplayMode(this);
         int[] customFrame = MatrixStorage.loadCustomFrame(this);
-        if (heartMode) {
-            bridge.setToyFrame(PixelMatrix.heart());
-        } else if (customFrame != null) {
-            bridge.setToyFrame(customFrame);
-        } else {
-            bridge.setToyFrame(PixelMatrix.clock(LocalTime.now()));
-        }
-        scheduleTurnOffCheck();
+        bridge.setToyFrame(frameForMode(mode, customFrame, LocalTime.now()));
+        scheduleNextRender(mode, customFrame == null);
     }
 
-    private void scheduleTurnOffCheck() {
-        serviceHandler.removeCallbacks(turnOffCheck);
-        long delay = GlyphDisplayPolicy.millisUntilDisplayDeadline(this);
-        if (delay == Long.MAX_VALUE) {
-            return;
+    private int[] frameForMode(GlyphDisplayMode mode, int[] customFrame, LocalTime now) {
+        if (mode == GlyphDisplayMode.HEART) {
+            return PixelMatrix.heart();
         }
-        if (delay <= 0L) {
-            render();
-            return;
+        if (mode == GlyphDisplayMode.CLOCK) {
+            return PixelMatrix.clock(now);
         }
-        long recheckDelay = Math.min(Math.max(1_000L, delay), MAX_SLEEP_TIMER_RECHECK_MS);
-        serviceHandler.postDelayed(turnOffCheck, recheckDelay);
+        return customFrame == null ? PixelMatrix.clock(now) : customFrame;
     }
 
-    private boolean shouldTurnOffOnUnbind() {
-        if (GlyphDisplayPolicy.isQuietHour(this, LocalTime.now())) {
-            return true;
+    private void scheduleNextRender(GlyphDisplayMode mode, boolean customFallsBackToClock) {
+        serviceHandler.removeCallbacks(renderTick);
+        if (mode == GlyphDisplayMode.CLOCK || customFallsBackToClock) {
+            serviceHandler.postDelayed(renderTick, CLOCK_REFRESH_MS);
         }
-        int minutes = MatrixStorage.loadDisplayDurationMinutes(this);
-        long deadlineAt = MatrixStorage.loadDisplaySessionDeadlineAt(this);
-        return minutes > 0 && deadlineAt > 0L && SystemClock.elapsedRealtime() >= deadlineAt;
     }
 }
