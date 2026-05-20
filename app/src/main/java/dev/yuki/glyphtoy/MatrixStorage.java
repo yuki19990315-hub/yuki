@@ -11,6 +11,7 @@ final class MatrixStorage {
     private static final String KEY_CUSTOM_FRAME = "custom_frame";
     private static final String KEY_GIF_FRAMES = "gif_frames";
     private static final String KEY_SELECTED_GIF_FRAME_INDEX = "selected_gif_frame_index";
+    private static final String KEY_DISPLAY_MODE = "display_mode";
     private static final String KEY_DISPLAY_DURATION_MINUTES = "display_duration_minutes";
     private static final String KEY_DISPLAY_DURATION_MIGRATED = "display_duration_migrated";
     private static final String KEY_DISPLAY_SESSION_STARTED_AT = "display_session_started_at";
@@ -70,6 +71,15 @@ final class MatrixStorage {
 
     static void saveSelectedGifFrameIndex(Context context, int index) {
         prefs(context).edit().putInt(KEY_SELECTED_GIF_FRAME_INDEX, Math.max(0, index)).apply();
+    }
+
+    static GlyphDisplayMode loadDisplayMode(Context context) {
+        return GlyphDisplayMode.fromStorageValue(prefs(context).getString(KEY_DISPLAY_MODE, null));
+    }
+
+    static void saveDisplayMode(Context context, GlyphDisplayMode mode) {
+        GlyphDisplayMode nextMode = mode == null ? GlyphDisplayMode.DEFAULT : mode;
+        prefs(context).edit().putString(KEY_DISPLAY_MODE, nextMode.storageValue()).apply();
     }
 
     static int loadDisplayDurationMinutes(Context context) {
