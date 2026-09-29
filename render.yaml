@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: tokiha-family
+    runtime: docker
+    plan: 0.5c-512mb
+    region: singapore
+    healthCheckPath: /api/v1/session
+    disk:
+      name: tokiha-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: TOKIHA_DATA_DIR
+        value: /data
+      - key: TOKIHA_HOST
+        value: 0.0.0.0
+      - key: TOKIHA_SECURE_COOKIE
+        value: "1"
+      - key: TOKIHA_MAX_UPLOAD_MB
+        value: "200"
+      - key: TOKIHA_PASSWORD
+        sync: false
+      - key: TOKIHA_BACKUP_TOKEN
+        sync: false
