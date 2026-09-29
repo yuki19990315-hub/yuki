@@ -10,7 +10,19 @@ TOKIHA_PASSWORD='16文字以上のテスト用パスワード' TOKIHA_SECURE_COO
 
 `http://127.0.0.1:8000` を開いてください。データは `./data` に保存されます。ブラウザに共有パスワードを入力し、写真・動画の追加、月別閲覧、ダウンロードを試せます。静的ファイルサーバーの `python -m http.server` ではAPIが動きません。
 
-## インターネットへ公開する
+## ドメイン・VPSなしで公開する（Render）
+
+`render.yaml` を使うと、RenderがHTTPSの `onrender.com` アドレスを発行し、10GBの永続ディスクを `/data` に接続します。写真とSQLiteはそこへ保存されます。これは**有料**構成です。2026年9月時点の公式価格では小型Webサービスが月$7、永続ディスクが月$0.25/GBのため、10GBなら基本部分は月約$9.50です。転送量などの追加料金と決済時の表示を確認してください。無料Webサービスには永続ディスクを付けられません。
+
+1. [Render](https://render.com/)でアカウントを作り、このGitHubリポジトリへのアクセスを許可します。
+2. **New → Blueprint**で `yuki19990315-hub/yuki` の **`codex-sigbbj` ブランチ**を選び、`render.yaml` を読み込みます。料金と10GBディスクの内容を確認します。
+3. `TOKIHA_PASSWORD` と `TOKIHA_BACKUP_TOKEN` に、**異なる**長いランダム値を入力します。PCで `python3 -c 'import secrets; print(secrets.token_hex(32))'` を2回実行すれば作れます。値をチャットやGitHubに貼らないでください。
+4. デプロイ後、Renderが表示する `https://...onrender.com` にアクセスし、ログインして写真を1枚追加します。別端末で見えることを確認します。
+5. 日常のバックアップ先として、PC自動バックアップを設定します。Renderのディスクスナップショットだけに頼らず、別の場所へ原本を残してください。
+
+Render設定は実サービスでの起動をまだ検証していません。設定が通らない場合は、Renderのデプロイログを確認して修正します。将来PRを `main` へマージしたら、Renderの連携ブランチも `main` に変更できます。
+
+## 自分のサーバーへ公開する
 
 Docker Composeを実行できる常時稼働のサーバー、独自ドメイン、DNSの設定が必要です。サーバーの80/443番ポートを開けてください。CaddyがHTTPS証明書を自動取得します。
 
@@ -43,6 +55,7 @@ python3 scripts/install_tokiha_backup.py --server-url https://photos.example.com
 - `app.js` — サーバーAPI経由のアップロード、閲覧、保存、ダウンロード
 - `server.py` — ログイン、SQLite、原本の永続保存、バックアップAPI
 - `Dockerfile` / `compose.yaml` / `Caddyfile` — HTTPS公開と永続ボリューム
+- `render.yaml` — VPS・独自ドメインなしでRenderへ配置する構成
 - `manifest.webmanifest` — ホーム画面追加用PWA設定
 - `docs/architecture.md` — 将来的な複数アカウント・大規模運用の構成案
 - `docs/usability-audit.md` — 仮想操作テストで見つけた問題と修正
