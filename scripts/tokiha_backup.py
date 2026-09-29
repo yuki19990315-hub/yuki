@@ -32,7 +32,7 @@ def sync(config_path: Path = CONFIG) -> int:
         if state["files"].get(item["id"]) == item.get("sha256"): continue
         captured = datetime.fromisoformat(item["captured_at"].replace("Z", "+00:00"))
         folder = root / f"{captured.year:04d}" / f"{captured.month:02d}"; folder.mkdir(parents=True, exist_ok=True)
-        target = folder / safe_name(item["filename"]); temporary = target.with_suffix(target.suffix+".part")
+        target = folder / f'{item["id"]}-{safe_name(item["filename"])}'; temporary = target.with_suffix(target.suffix+".part")
         request = Request(urljoin(config["server_url"], item["download_url"]), headers={"Authorization": f"Bearer {config['token']}"})
         digest = hashlib.sha256()
         with urlopen(request, timeout=300) as response, temporary.open("wb") as output:

@@ -17,7 +17,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
         <span>検索</span>
       </button>
-      <button class="avatar" aria-label="アカウント設定、ゆき">Y</button>
+      <button class="avatar" id="logoutButton" aria-label="ログアウト" title="ログアウト">↪</button>
     </div>
   </header>
 
@@ -27,12 +27,6 @@
         <p class="eyebrow">PRIVATE FAMILY SPACE</p>
         <h1>思い出を、<br><em>ひとつに。</em></h1>
         <p class="hero-copy">家族だけの写真と動画。<br>どのスマホからでも、いつでも。</p>
-      </div>
-      <div class="hero-meta">
-        <div class="member-stack" aria-label="共有メンバー4人">
-          <span>Y</span><span>M</span><span>S</span><span>＋</span>
-        </div>
-        <p><strong>4</strong>人で共有中</p>
       </div>
     </section>
 
@@ -47,7 +41,7 @@
         <button class="filter" data-filter="image" aria-pressed="false">写真</button>
         <button class="filter" data-filter="video" aria-pressed="false">動画</button>
       </div>
-      <p id="itemCount">6件</p>
+      <p id="itemCount">0件</p>
     </section>
 
     <section class="storage-card" aria-label="ストレージとバックアップ">
@@ -55,7 +49,7 @@
         <span class="storage-icon" aria-hidden="true">↧</span>
         <div>
           <p>PCにバックアップ</p>
-          <span id="storageSummary">追加したファイルはまだありません</span>
+          <span id="storageSummary">写真・動画はまだありません</span>
         </div>
       </div>
       <div class="backup-actions">
@@ -103,9 +97,20 @@
     <form method="dialog">
       <h2>PC起動時に自動保存</h2>
       <p>最初の1回だけ、PC用バックアップを設定します。その後はPCへログインすると、新しい写真だけが自動で保存されます。</p>
-      <ol><li>管理者から設定ファイルを受け取る</li><li>PCで「自動バックアップ設定」を開く</li><li>保存するフォルダを選ぶ</li></ol>
-      <p class="help-note">このデモはサーバー未接続のため、設定ファイルの発行は本番版で利用できます。</p>
+      <ol><li>管理者からバックアップ用トークンを受け取る</li><li>PCで設定用のコマンドを実行する</li><li>保存するフォルダを指定する</li></ol>
+      <p class="help-note">詳しいコマンドは管理者向けREADMEを参照してください。</p>
       <button value="close" class="primary full-button">わかりました</button>
+    </form>
+  </dialog>
+
+  <dialog id="loginDialog" class="small-dialog login-dialog" aria-labelledby="loginTitle">
+    <form id="loginForm">
+      <h2 id="loginTitle">家族のアルバムに入る</h2>
+      <p>共有パスワードを入力してください。</p>
+      <label for="loginPassword">パスワード</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required>
+      <p id="loginError" class="login-error" role="alert"></p>
+      <button class="primary full-button" type="submit">アルバムを開く</button>
     </form>
   </dialog>
 

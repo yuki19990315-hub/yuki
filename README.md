@@ -1,34 +1,50 @@
 # TOKIHA — 家族の写真・動画共有アプリ
 
-Android・iPhone・PCのブラウザから同じアルバムを見られる、インストール不要の写真共有アプリのプロトタイプです。
+Android・iPhone・PCのブラウザから同じアルバムを見られる、家族向け写真・動画共有サーバーです。原本と一覧はサーバーの永続ボリュームに保存され、端末を変えたり再起動したりしても残ります。
 
-## 起動
+## ローカルで試す
 
 ```bash
-python3 -m http.server 4173
+TOKIHA_PASSWORD='16文字以上のテスト用パスワード' TOKIHA_SECURE_COOKIE=0 python3 server.py
 ```
 
-`http://localhost:4173` を開いてください。写真・動画の追加、撮影月ごとの閲覧、プレビュー、ダウンロードを試せます。追加したファイルはこのデモを開いている間だけ保持されます。「今すぐPCに保存」から、追加した原本と一覧情報を1つの `.tar` ファイルとしてPCへ保存できます。
+`http://127.0.0.1:8000` を開いてください。データは `./data` に保存されます。ブラウザに共有パスワードを入力し、写真・動画の追加、月別閲覧、ダウンロードを試せます。静的ファイルサーバーの `python -m http.server` ではAPIが動きません。
 
-`scripts/install_tokiha_backup.py` は、本番サーバー公開後にPCログイン時の自動バックアップを設定するクライアントです。詳しくは [`docs/architecture.md`](docs/architecture.md#pc自動バックアップ) を参照してください。
+## インターネットへ公開する
 
-## 本番化のおすすめ構成
+Docker Composeを実行できる常時稼働のサーバー、独自ドメイン、DNSの設定が必要です。サーバーの80/443番ポートを開けてください。CaddyがHTTPS証明書を自動取得します。
 
-詳しい比較と実装ロードマップは [`docs/architecture.md`](docs/architecture.md) を参照してください。最短構成は次の通りです。
+1. このブランチをサーバーへ配置し、`cp .env.example .env` を実行します。
+2. `TOKIHA_DOMAIN` にそのサーバーを指すドメインを指定します。
+3. `TOKIHA_PASSWORD` と `TOKIHA_BACKUP_TOKEN` に、**それぞれ別の**長いランダム値を設定します。`python3 -c 'import secrets; print(secrets.token_hex(32))'` を2回実行すると生成できます。`.env` を共有・コミットしないでください。
+4. `chmod 600 .env` の後、`docker compose up -d --build` を実行します。
+5. `https://設定したドメイン/` を開き、ログイン・写真の追加・別端末での表示を確認します。
 
-- **画面:** このPWAをNext.jsまたはFlutterへ移植
-- **ログイン・DB・ストレージ:** Supabase
-- **動画:** Cloudflare Stream（動画が増えてから追加）
-- **公開:** Vercel / Cloudflare Pages
+`tokiha_data` ボリュームにはSQLite DBと原本が入ります。コンテナ更新後も残りますが、`docker compose down -v` やサーバー自体の故障では失われる可能性があります。**家族の写真を入れる前に**、別のディスクやクラウドへこのボリューム全体の定期バックアップを設定し、復元を一度確認してください。Web画面の「今すぐPCに保存」では全原本とJSONを `.tar` で取得できます。実行中のSQLiteファイルを単純コピーせず、停止した状態でボリュームを保存するかSQLiteのオンラインバックアップ機能を使ってください。
+
+ログインは現段階で家族共通のパスワードです。個人別アカウント、招待、削除、容量上限、動画変換、複数台への冗長化は未実装です。まず少人数の私的利用向けとして、これらが必要な場合は [`docs/architecture.md`](docs/architecture.md) の次段階を実装してください。1ファイルの上限は200MBです。JPEGのEXIF日時を読めない写真・動画はファイル更新日時で表示します。
+
+## PCへ自動バックアップ
+
+ブラウザの共有パスワードとは別の読み取り専用トークンで、PCログイン時に原本を同期できます。PCにこのリポジトリの `scripts/` を配置し、次を一度実行します。
+
+```bash
+python3 scripts/install_tokiha_backup.py --server-url https://photos.example.com \
+  --destination ~/Pictures/TOKIHA
+```
+
+プロンプトで `TOKIHA_BACKUP_TOKEN` の値を入力します。設定は利用者の `~/.config/tokiha/backup.json` に保存されます。トークンは写真の取得専用で、アップロード・日付変更には使用できません。
 
 ## ファイル構成
 
 - `index.html` — アプリ画面
 - `guide.html` — iPhone / Android / Windows / Mac別の使い方説明書
 - `styles.css` — モバイルファーストのUI
-- `app.js` — アップロード、閲覧、保存、ダウンロード
+- `app.js` — サーバーAPI経由のアップロード、閲覧、保存、ダウンロード
+- `server.py` — ログイン、SQLite、原本の永続保存、バックアップAPI
+- `Dockerfile` / `compose.yaml` / `Caddyfile` — HTTPS公開と永続ボリューム
 - `manifest.webmanifest` — ホーム画面追加用PWA設定
-- `docs/architecture.md` — 本番構成案・費用感・安全設計
+- `docs/architecture.md` — 将来的な複数アカウント・大規模運用の構成案
 - `docs/usability-audit.md` — 仮想操作テストで見つけた問題と修正
 - `docs/device-guide.md` — 配布・印刷用の端末別手順書
 - `scripts/` — Windows / macOS / Linux用の自動バックアップクライアント

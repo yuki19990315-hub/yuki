@@ -1,0 +1,37 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      TOKIHA_PASSWORD: ${TOKIHA_PASSWORD:?Set TOKIHA_PASSWORD in .env}
+      TOKIHA_BACKUP_TOKEN: ${TOKIHA_BACKUP_TOKEN:?Set TOKIHA_BACKUP_TOKEN in .env}
+      TOKIHA_DATA_DIR: /data
+      TOKIHA_HOST: 0.0.0.0
+      TOKIHA_SECURE_COOKIE: 1
+      TOKIHA_MAX_UPLOAD_MB: 200
+    volumes:
+      - tokiha_data:/data
+    expose:
+      - "8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      TOKIHA_DOMAIN: ${TOKIHA_DOMAIN:?Set TOKIHA_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+volumes:
+  tokiha_data:
+  caddy_data:
+  caddy_config:
