@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Download new TOKIHA originals into capture-date folders."""
 from __future__ import annotations
-import argparse, hashlib, json, os, shutil, sys
+import argparse, hashlib, json
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urljoin
@@ -29,10 +29,10 @@ def sync(config_path: Path = CONFIG) -> int:
     manifest = api_json(urljoin(config["server_url"].rstrip("/")+"/", "api/v1/backup/manifest"), config["token"])
     downloaded = 0
     for item in manifest.get("files", []):
-        if state["files"].get(item["id"]) == item.get("sha256"): continue
         captured = datetime.fromisoformat(item["captured_at"].replace("Z", "+00:00"))
         folder = root / f"{captured.year:04d}" / f"{captured.month:02d}"; folder.mkdir(parents=True, exist_ok=True)
         target = folder / f'{item["id"]}-{safe_name(item["filename"])}'; temporary = target.with_suffix(target.suffix+".part")
+        if target.is_file() and state["files"].get(item["id"]) == item.get("sha256"): continue
         request = Request(urljoin(config["server_url"], item["download_url"]), headers={"Authorization": f"Bearer {config['token']}"})
         digest = hashlib.sha256()
         with urlopen(request, timeout=300) as response, temporary.open("wb") as output:
