@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f5f1">
+  <title>TOKIHA — 思い出を、ひとつに。</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="TOKIHA ホーム">TOKIHA<span>.</span></a>
+    <div class="header-actions">
+      <a class="guide-link" href="guide.html">使い方</a>
+      <button class="icon-button search-button" id="searchButton" aria-label="写真を検索">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <span>検索</span>
+      </button>
+      <button class="avatar" id="logoutButton" aria-label="ログアウト" title="ログアウト">↪</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">PRIVATE FAMILY SPACE</p>
+        <h1>思い出を、<br><em>ひとつに。</em></h1>
+        <p class="hero-copy">家族だけの写真と動画。<br>どのスマホからでも、いつでも。</p>
+      </div>
+    </section>
+
+    <aside class="simple-guide" aria-label="使い方">
+      <strong>使い方は3つだけ</strong>
+      <ol><li><b>1</b> 写真を追加</li><li><b>2</b> 写真を見る</li><li><b>3</b> PCに保存</li></ol>
+    </aside>
+
+    <section class="toolbar" aria-label="ギャラリー操作">
+      <div class="filters" role="group" aria-label="種類で絞り込む">
+        <button class="filter active" data-filter="all" aria-pressed="true">すべて</button>
+        <button class="filter" data-filter="image" aria-pressed="false">写真</button>
+        <button class="filter" data-filter="video" aria-pressed="false">動画</button>
+      </div>
+      <p id="itemCount">0件</p>
+    </section>
+
+    <section class="storage-card" aria-label="ストレージとバックアップ">
+      <div class="storage-copy">
+        <span class="storage-icon" aria-hidden="true">↧</span>
+        <div>
+          <p>PCにバックアップ</p>
+          <span id="storageSummary">写真・動画はまだありません</span>
+        </div>
+      </div>
+      <div class="backup-actions">
+        <button id="backupButton" class="backup-button" disabled>今すぐPCに保存</button>
+        <button type="button" id="autoBackupHelp" class="auto-backup-link">PC起動時の自動保存について</button>
+      </div>
+    </section>
+
+    <div class="search-panel" id="searchPanel" hidden>
+      <label for="searchInput">写真・動画を検索</label>
+      <div><input id="searchInput" type="search" placeholder="例：海、2026年9月"><button id="closeSearch">検索を閉じる</button></div>
+    </div>
+
+    <section id="gallery" aria-live="polite"></section>
+    <div class="empty" id="emptyState" hidden>
+      <p>まだ思い出がありません</p><span>＋ボタンから追加してみましょう</span>
+    </div>
+  </main>
+
+  <button class="upload-fab" id="uploadButton" aria-label="写真や動画を追加">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>追加する</span>
+  </button>
+  <input id="fileInput" type="file" accept="image/*,video/*" multiple hidden>
+
+  <dialog id="viewer">
+    <button class="dialog-close" id="closeViewer" aria-label="閉じる">×</button>
+    <div class="viewer-media" id="viewerMedia"></div>
+    <div class="viewer-info">
+      <div><h2 id="viewerTitle"></h2><p id="viewerDate"></p></div>
+      <div class="viewer-actions"><button id="editDateButton" class="text-button">撮影日を直す</button><a id="downloadLink" class="download" download>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>保存
+      </a></div>
+    </div>
+  </dialog>
+
+  <dialog id="dateDialog" class="small-dialog">
+    <form method="dialog" id="dateForm">
+      <h2>撮影日を直す</h2><p>写真を撮った日を選んでください。</p>
+      <label for="captureDateInput">撮影日</label><input id="captureDateInput" type="date" required>
+      <div class="form-actions"><button value="cancel">やめる</button><button value="save" class="primary">この日に変更</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="backupHelpDialog" class="small-dialog">
+    <form method="dialog">
+      <h2>PC起動時に自動保存</h2>
+      <p>最初の1回だけ、PC用バックアップを設定します。その後はPCへログインすると、新しい写真だけが自動で保存されます。</p>
+      <ol><li>管理者からバックアップ用トークンを受け取る</li><li>PCで設定用のコマンドを実行する</li><li>保存するフォルダを指定する</li></ol>
+      <p class="help-note">詳しいコマンドは管理者向けREADMEを参照してください。</p>
+      <button value="close" class="primary full-button">わかりました</button>
+    </form>
+  </dialog>
+
+  <dialog id="loginDialog" class="small-dialog login-dialog" aria-labelledby="loginTitle">
+    <form id="loginForm">
+      <h2 id="loginTitle">家族のアルバムに入る</h2>
+      <p>共有パスワードを入力してください。</p>
+      <label for="loginPassword">パスワード</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required>
+      <p id="loginError" class="login-error" role="alert"></p>
+      <button class="primary full-button" type="submit">アルバムを開く</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status">アップロードしました</div>
+  <script src="app.js"></script>
+</body>
+</html>
