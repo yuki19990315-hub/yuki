@@ -1,4 +1,5 @@
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -15,6 +16,9 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000b49444154789c636000020000050001a5f645400000000049454e44ae426082")
+spec = importlib.util.spec_from_file_location("backup_client", ROOT / "scripts" / "tokiha_backup.py")
+backup_client = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(backup_client)
 
 
 class ServerTest(unittest.TestCase):
@@ -68,6 +72,16 @@ class ServerTest(unittest.TestCase):
         with self.request("/api/v1/backup/manifest", headers={"Authorization":"Bearer backup-token-test"}) as response:
             manifest = json.load(response)
         self.assertEqual(manifest["files"][0]["sha256"], hashlib.sha256(PNG).hexdigest())
+        destination = Path(self.temp.name) / "main-pc"
+        config = Path(self.temp.name) / "backup-config.json"
+        config.write_text(json.dumps({"server_url":f"http://127.0.0.1:{self.port}","token":"backup-token-test","destination":str(destination)}))
+        self.assertEqual(backup_client.sync(config), 1)
+        copied = next(destination.glob("2026/09/*.png"))
+        self.assertEqual(copied.read_bytes(), PNG)
+        self.assertEqual(backup_client.sync(config), 0)
+        copied.unlink()
+        self.assertEqual(backup_client.sync(config), 1)
+        self.assertEqual(copied.read_bytes(), PNG)
         with self.assertRaises(HTTPError) as denied:
             self.request("/api/v1/media", PNG, headers={**headers, "Cookie":"", "Authorization":"Bearer backup-token-test"})
         self.assertEqual(denied.exception.code, 401)
